@@ -151,7 +151,7 @@ pub trait CompactStringExt {
     ///
     /// assert_eq!(compact, "hello world!");
     /// ```
-    fn concat_compact(&self) -> CompactString;
+    fn concat_compact(self) -> CompactString;
 
     /// Joins all the items of a collection, placing a separator between them, forming a
     /// [`CompactString`]
@@ -165,15 +165,15 @@ pub trait CompactStringExt {
     ///
     /// assert_eq!(compact, "apples, oranges, bananas");
     /// ```
-    fn join_compact<S: AsRef<str>>(&self, separator: S) -> CompactString;
+    fn join_compact<S: AsRef<str>>(self, separator: S) -> CompactString;
 }
 
 impl<I, C> CompactStringExt for C
 where
     I: AsRef<str>,
-    for<'a> &'a C: IntoIterator<Item = &'a I>,
+    C: IntoIterator<Item = I>,
 {
-    fn concat_compact(&self) -> CompactString {
+    fn concat_compact(self) -> CompactString {
         self.into_iter()
             .fold(CompactString::const_new(""), |mut s, item| {
                 s.push_str(item.as_ref());
@@ -181,7 +181,7 @@ where
             })
     }
 
-    fn join_compact<S: AsRef<str>>(&self, separator: S) -> CompactString {
+    fn join_compact<S: AsRef<str>>(self, separator: S) -> CompactString {
         let mut compact_string = CompactString::const_new("");
 
         let mut iter = self.into_iter().peekable();
@@ -213,18 +213,44 @@ mod tests {
     #[test]
     fn test_join() {
         let slice = ["hello", "world"];
-        let c = slice.join_compact(" ");
-        assert_eq!(c, "hello world");
+        let c1 = (&slice).join_compact(" ");
+        let c2 = slice.join_compact(" ");
+        assert_eq!(c1, "hello world");
+        assert_eq!(c2, "hello world");
 
         let vector = vec!["🍎", "🍊", "🍌"];
         let c = vector.join_compact(",");
         assert_eq!(c, "🍎,🍊,🍌");
+
+        let owned_strings = ["foo".to_string(), "bar".to_string()];
+        let c = owned_strings.join_compact("/");
+        assert_eq!(c, "foo/bar");
+    }
+
+    #[test]
+    fn test_join_iter() {
+        let values = ["foo", "bar", "baz"];
+        let compact = values.iter().map(|x| x.to_string()).join_compact("/");
+        assert_eq!(compact, "foo/bar/baz");
+
+        let compact = values
+            .clone()
+            .into_iter()
+            .map(|x| x.trim())
+            .join_compact("-");
+        assert_eq!(compact, "foo-bar-baz");
+
+        let compact = values
+            .into_iter()
+            .map(CompactString::from)
+            .join_compact("...");
+        assert_eq!(compact, "foo...bar...baz");
     }
 
     #[proptest]
     #[cfg_attr(miri, ignore)]
     fn proptest_join(items: Vec<String>, separator: String) {
-        let c: CompactString = items.join_compact(&separator);
+        let c: CompactString = items.iter().join_compact(&separator);
         let s: String = items.join(&separator);
         assert_eq!(c, s);
     }
@@ -243,7 +269,7 @@ mod tests {
     #[proptest]
     #[cfg_attr(miri, ignore)]
     fn proptest_concat(items: Vec<String>) {
-        let c: CompactString = items.concat_compact();
+        let c: CompactString = items.iter().concat_compact();
         let s: String = items.concat();
         assert_eq!(c, s);
     }

@@ -688,7 +688,7 @@ impl Creation<'_> {
                 Some((compact, word))
             }
             Join(collection, seperator) => {
-                let compact: CompactString = collection.join_compact(seperator);
+                let compact: CompactString = (&collection).join_compact(seperator);
                 let std_str: String = collection.join(seperator);
 
                 assert_eq!(compact, std_str);
@@ -697,7 +697,7 @@ impl Creation<'_> {
                 Some((compact, std_str))
             }
             Concat(collection) => {
-                let compact: CompactString = collection.concat_compact();
+                let compact: CompactString = (&collection).concat_compact();
                 let std_str: String = collection.concat();
 
                 assert_eq!(compact, std_str);
