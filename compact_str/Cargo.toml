@@ -29,6 +29,7 @@ sqlx = ["dep:sqlx", "std"]
 sqlx-mysql = ["sqlx", "sqlx/mysql"]
 sqlx-postgres = ["sqlx", "sqlx/postgres"]
 sqlx-sqlite = ["sqlx", "sqlx/sqlite"]
+zeroize = ["dep:zeroize"]
 
 [dependencies]
 arbitrary = { version = "1", optional = true, default-features = false }
@@ -42,6 +43,7 @@ rkyv = { version = "0.8", optional = true, default-features = false }
 serde = { version = "1", optional = true, default-features = false, features = ["derive", "alloc"] }
 smallvec = { version = "1", optional = true, features = ["union"] }
 sqlx = { version = "0.8", optional = true, default-features = false }
+zeroize = { version = "1", optional = true, default-features = false }
 
 castaway = { version = "0.2.3", default-features = false, features = ["alloc"] }
 cfg-if = "1"

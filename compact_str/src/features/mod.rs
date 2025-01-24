@@ -22,3 +22,5 @@ mod serde;
 mod smallvec;
 #[cfg(feature = "sqlx")]
 mod sqlx;
+#[cfg(feature = "zeroize")]
+mod zeroize;
