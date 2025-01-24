@@ -46,8 +46,10 @@ pub enum Action<'a> {
     CloneAndDrop,
     /// Calls into_bytes, validates equality, and converts back into strings
     RoundTripIntoBytes,
-    // Repeat the string to form a new string.
+    /// Repeat the string to form a new string.
     Repeat(usize),
+    /// Zero out the data backing the string.
+    Zeroize,
 }
 
 impl Action<'_> {
@@ -404,6 +406,11 @@ impl Action<'_> {
 
                 *compact = new_compact;
                 *control = new_control;
+            }
+            Zeroize => {
+                use zeroize::Zeroize;
+                control.zeroize();
+                compact.zeroize();
             }
         }
     }

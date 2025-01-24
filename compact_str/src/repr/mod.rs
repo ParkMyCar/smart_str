@@ -533,6 +533,64 @@ impl Repr {
         }
     }
 
+    /// Zero out the memory backing this [`Repr`].
+    #[cfg(feature = "zeroize")]
+    pub(crate) fn zeroize(&mut self) {
+        // We can't zero out static memory so we just replace ourselves with
+        // the EMPTY variant.
+        if self.is_static_str() {
+            *self = EMPTY;
+            return;
+        }
+
+        /// Performs a volatile `memset` operation which fills a slice with a value.
+        ///
+        /// # SAFETY:
+        ///
+        /// * The memory pointed to by `dst` must be valid for `count` contiguous bytes.
+        /// * `count` must not be larger than an isize
+        /// * `dst` + `count` must not wrap around the address space.
+        ///  
+        /// Derived from: <https://github.com/RustCrypto/utils/blob/c68a5204b2e66b0f60832d845e048fca96a81211/zeroize/src/lib.rs#L766-L791>.
+        ///
+        /// TODO(parkmycar): use `volatile_set_memory` when stabilized
+        #[inline(always)]
+        unsafe fn volatile_zero(dst: *mut u8, count: usize) {
+            for i in 0..count {
+                let dst = dst.add(i);
+                ptr::write_volatile(dst, 0);
+            }
+        }
+
+        /// Uses fences to prevent the compiler from re-ordering memory accesses.
+        #[inline(always)]
+        fn atomic_fence() {
+            use core::sync::atomic;
+            atomic::compiler_fence(atomic::Ordering::SeqCst);
+        }
+
+        // The last byte stores our discriminant and stack length.
+        let last_byte = self.last_byte();
+
+        let (ptr, cap) = if last_byte == HEAP_MASK {
+            // SAFETY: We just checked the discriminant to make sure we're heap allocated
+            let heap_buffer = unsafe { self.as_mut_heap() };
+            let ptr = heap_buffer.ptr.as_ptr();
+            let cap = heap_buffer.capacity();
+            (ptr, cap)
+        } else {
+            let ptr = self as *mut Self as *mut u8;
+            let cap = MAX_SIZE - 1;
+            (ptr, cap)
+        };
+
+        // SAFTEY: We know our pointer is valid for `cap` bytes because the capacity came
+        // from an already existing CompactString. Also we don't allow allocations larger
+        // then an isize.
+        unsafe { volatile_zero(ptr, cap) };
+        atomic_fence()
+    }
+
     /// Returns the last byte that's on the stack.
     ///
     /// The last byte stores the discriminant that indicates whether the string is on the stack or
